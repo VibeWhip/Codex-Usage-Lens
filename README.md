@@ -11,6 +11,7 @@ Codex Usage Lens 是一个本地运行、注重隐私的 Codex Desktop 额度看
 - 读取 Codex Desktop 同源使用量接口：`https://chatgpt.com/backend-api/wham/usage`
 - 展示 5 小时和 1 周窗口的剩余百分比、已用百分比、重置倒计时和重置时间
 - 页面每 5 秒刷新一次
+- 监听额度只是查询使用量 API，不触发模型推理，不消耗 Codex token 或对话额度，可以放心使用
 - 默认只监听 `127.0.0.1`
 - 访问令牌只在本地 Node 服务端读取，不会返回给浏览器
 - 实时接口不可用时，自动退回读取本地 `~/.codex/sessions` 里的 `rate_limits` 快照
@@ -74,6 +75,8 @@ Authorization: Bearer <tokens.access_token from ~/.codex/auth.json>
 
 浏览器只请求本机 `/api/quota`。本地 Node 服务端读取 `~/.codex/auth.json` 并在服务端调用使用量接口，访问令牌不会返回给浏览器。
 
+额度监听只调用使用量查询 API，不会发起 Codex 对话或模型推理请求，因此不会消耗 token 或对话额度。
+
 `/api/quota` 也不会返回本机文件路径、auth 文件路径或 session 文件路径。
 
 ## 常用命令
@@ -102,6 +105,7 @@ Codex Usage Lens is a local, privacy-conscious dashboard for Codex Desktop usage
 - Reads the same usage endpoint used by Codex Desktop: `https://chatgpt.com/backend-api/wham/usage`
 - Shows remaining percentage, used percentage, reset countdown, and reset time for the 5-hour and 1-week windows
 - Refreshes every 5 seconds
+- Monitoring only queries the usage API. It does not trigger model inference and does not consume Codex tokens or conversation quota.
 - Serves only on `127.0.0.1` by default
 - Keeps the access token on the local Node server side and never returns it to the browser
 - Falls back to local `~/.codex/sessions` `rate_limits` snapshots when the live endpoint is unavailable
@@ -164,6 +168,8 @@ The fallback reads the newest `rate_limits` snapshots emitted into local Codex s
 ## Privacy
 
 The browser only talks to the local `/api/quota` endpoint. The local Node server reads `~/.codex/auth.json` and calls the usage endpoint server-side. The access token is never returned to the browser API response.
+
+Usage monitoring only calls the usage query API. It does not start Codex conversations or model inference requests, so it does not consume tokens or conversation quota.
 
 `/api/quota` also avoids returning local filesystem paths, auth file paths, or session file paths.
 
