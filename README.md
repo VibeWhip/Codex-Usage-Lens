@@ -88,6 +88,20 @@ npm run check
 npm start
 ```
 
+## macOS 常驻运行
+
+如果不想因为终端关闭导致页面断连，可以安装用户级 LaunchAgent：
+
+```bash
+npm run service:install
+```
+
+卸载：
+
+```bash
+npm run service:uninstall
+```
+
 ## 许可证
 
 MIT

@@ -88,6 +88,20 @@ npm run check
 npm start
 ```
 
+## Keep Running On macOS
+
+Install a user LaunchAgent if you do not want the dashboard to disconnect when the terminal is closed:
+
+```bash
+npm run service:install
+```
+
+Uninstall:
+
+```bash
+npm run service:uninstall
+```
+
 ## License
 
 MIT

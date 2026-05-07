@@ -4,7 +4,9 @@ const hero = document.querySelector("#hero");
 const summary = document.querySelector("#summary");
 const statusEl = document.querySelector("#status");
 const lastUpdated = document.querySelector("#last-updated");
+const CACHE_KEY = "codex-usage-lens:last-good-snapshot";
 let lastData = null;
+let lastError = null;
 
 function pct(value) {
   return `${Number(value).toFixed(1)}%`;
@@ -38,6 +40,29 @@ function formatDuration(ms) {
 function setStatus(text, mode) {
   statusEl.className = `status ${mode || ""}`;
   statusEl.querySelector("span:last-child").textContent = text;
+}
+
+function readCachedData() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    return isRenderable(data) ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedData(data) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+  } catch {
+    // Ignore storage failures; live rendering should continue.
+  }
+}
+
+function isRenderable(data) {
+  return Boolean(data?.ok && Array.isArray(data.limits) && data.limits.length > 0);
 }
 
 function windowTile(window, title, tone) {
@@ -77,7 +102,7 @@ function windowTile(window, title, tone) {
 function render(data) {
   lastData = data;
 
-  if (!data.ok || data.limits.length === 0) {
+  if (!isRenderable(data)) {
     hero.innerHTML = "";
     summary.innerHTML = `
       <article class="empty">
@@ -118,20 +143,61 @@ function render(data) {
   setStatus(sourceStatus, sourceMode);
 }
 
+function renderOffline(error) {
+  lastError = error;
+
+  if (lastData) {
+    render(lastData);
+    setStatus("重连中", "warn");
+    lastUpdated.textContent = `${lastUpdated.textContent} / 本地服务重连中`;
+    return;
+  }
+
+  const cached = readCachedData();
+  if (cached) {
+    render(cached);
+    lastData = cached;
+    setStatus("缓存数据", "warn");
+    lastUpdated.textContent = `${lastUpdated.textContent} / 本地服务重连中`;
+    return;
+  }
+
+  hero.innerHTML = `
+    <div class="hero-copy">
+      <p class="eyebrow">Codex Usage Lens</p>
+      <h1>本地服务未连接</h1>
+      <p class="hero-subtitle">页面会继续自动重试。请确认本地服务正在运行。</p>
+    </div>
+  `;
+  summary.innerHTML = `
+    <article class="empty">
+      <h2>等待本地服务</h2>
+      <p>运行 npm start 后，页面会自动恢复显示额度。</p>
+    </article>
+  `;
+  lastUpdated.textContent = `上次尝试 ${formatDate(Date.now())}`;
+  setStatus("重连中", "warn");
+}
+
 async function refresh() {
   try {
     const response = await fetch(`/api/quota?t=${Date.now()}`, { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    render(await response.json());
+    const data = await response.json();
+    lastError = null;
+    if (isRenderable(data)) {
+      writeCachedData(data);
+    }
+    render(data);
   } catch (error) {
-    setStatus("读取失败", "error");
-    summary.innerHTML = `
-      <article class="empty">
-        <h2>读取失败</h2>
-        <p>${error.message}</p>
-      </article>
-    `;
+    renderOffline(error);
   }
+}
+
+lastData = readCachedData();
+if (lastData) {
+  render(lastData);
+  setStatus("缓存数据", "warn");
 }
 
 refresh();
@@ -139,5 +205,9 @@ setInterval(refresh, POLL_MS);
 setInterval(() => {
   if (lastData) {
     render(lastData);
+    if (lastError) {
+      setStatus("重连中", "warn");
+      lastUpdated.textContent = `${lastUpdated.textContent} / 本地服务重连中`;
+    }
   }
 }, TICK_MS);

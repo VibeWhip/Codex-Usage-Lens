@@ -23,4 +23,5 @@ Thumbs.db
 # build/test output
 coverage/
 dist/
+logs/
 tmp/
